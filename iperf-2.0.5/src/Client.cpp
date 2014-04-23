@@ -60,7 +60,7 @@
 #include "delay.hpp"
 #include "util.h"
 #include "Locale.h"
-
+#include "List.h"  //**********zsh
 /* -------------------------------------------------------------------
  * Store server hostname, optionally local hostname, and socket info.
  * ------------------------------------------------------------------- */
@@ -112,16 +112,162 @@ Client::~Client() {
     DELETE_ARRAY( mBuf );
 } // end ~Client
 
+
 const double kSecs_to_usecs = 1e6; 
 const int    kBytes_to_Bits = 8; 
 
+
+double Client::U_Random()
+{
+		double f;
+	   srand( (unsigned)time( NULL ) );
+	   f = (float)(rand() % 100);
+	        /* printf("%f\n",f); */
+	    return f/100;
+	}
+
+
+
+int Client::Possion()
+{
+		int Lambda = 500;
+		int k = 0;
+	    long double p = 1.0;
+	    long double l=exp(-Lambda);  /* 为了精度，才定义为long double的，exp(-Lambda)是接近0的小数*/
+	   //printf("%.15Lf\n",l);
+	     while (p>=l)
+	        {
+	                double u = U_Random();
+	                p *= u;
+	                k++;
+	        }
+	        return k-1;
+
+	}
+
+
+ int Client::TotalRcv=0;
+ pthread_cond_t ready =PTHREAD_COND_INITIALIZER;
+ pthread_mutex_t RcvDoneCond  =PTHREAD_MUTEX_INITIALIZER;
+
+void Client::Incst_RunTCP(void)
+{
+
+		char *vptr="7request";
+		int nleft,nwritten,err;
+		char *ptr =NULL;
+		unsigned long currLen;
+		unsigned long totLen,sum_Len;
+		 int leftLen;
+		 sum_Len=0;
+		 ReportStruct *reportstruct = NULL;
+
+		  struct itimerval it;
+		  memset (&it, 0, sizeof (it));
+		  it.it_value.tv_sec=(int)(mSettings->mAmount/100.0);
+		  it.it_value.tv_usec=(int) 10000 * (mSettings->mAmount -it.it_value.tv_sec * 100.0);
+
+		  err = setitimer( ITIMER_REAL, &it, NULL );
+			    if ( err != 0 ) {
+			    	   perror("setitimer");
+			    	    	exit(1);
+			    	   }
+
+				reportstruct = new ReportStruct;
+				reportstruct->packetID = 0;
+				mSettings->reporthdr = InitReport( mSettings );
+
+		do{
+
+			ptr=new char[20];
+			memcpy(ptr,vptr,8);
+			nleft=8;
+			currLen=0;
+			totLen=0;
+
+			 while(nleft>0)
+			    	 {
+
+			    			nwritten=write(mSettings->mSock,ptr,nleft) ;
+			    					 if( nwritten<0) {
+			    			WARN_errno( nwritten < 0, "write2" );
+			    						             break; }
+			    				nleft-=nwritten;
+			    				ptr+=nwritten;
+
+			    		 }
+			  // printf("nw %d\n", nwritten);
+
+
+	 //  lastPacketTime.setnow();
+
+	   	leftLen=mSettings->mBufLen;
+
+	    do
+	    {
+	    	currLen=recv(mSettings->mSock,mBuf,leftLen,0);
+
+	    	if(currLen<0)
+	    	{
+	    		WARN_errno(currLen<0, "read2");
+	    		break;
+	    	}
+
+	    	reportstruct->packetLen = currLen;
+	    	gettimeofday( &(reportstruct->packetTime), NULL );
+
+	      ReportPacket( mSettings->reporthdr, reportstruct );
+
+	    	leftLen-=currLen;
+	    	totLen+=currLen;
+	    	sum_Len+=currLen;
+	    } while(leftLen>0);
+
+
+	    TotalRcv++;
+	    pthread_mutex_lock(&RcvDoneCond);
+
+	    if( TotalRcv==mSettings->mThreads)
+	    	{
+	    	 TotalRcv=0;
+	    	pthread_cond_broadcast(&ready);
+	    	}
+
+	    else
+	    {
+
+	    while(mSettings->mThreads!=TotalRcv && TotalRcv!=0)
+	    	pthread_cond_wait(&ready,&RcvDoneCond);
+			pthread_mutex_unlock(&RcvDoneCond);
+
+	    }
+
+	    pthread_mutex_unlock(&RcvDoneCond);
+
+	    printf("got once %d \n",this);
+
+	   // gettimeofday( &(reportstruct->packetTime), NULL );
+	   // printf("tv_sec::::%d\n",reportstruct->packetTime.tv_sec);
+	    //printf("tv_usec::::%d\n",reportstruct->packetTime.tv_usec);
+
+	    //reportstruct->packetLen = totLen;
+
+		}while(!sInterupted);
+		//printf("got_len::::::::::%d\n",sum_Len);
+		 ReportPacket( mSettings->reporthdr, reportstruct );
+		 CloseReport( mSettings->reporthdr, reportstruct );
+		 DELETE_PTR( reportstruct );
+		 DELETE_ARRAY( mBuf );
+		 EndReport( mSettings->reporthdr );
+
+	}
+
+
 void Client::RunTCP( void ) {
     unsigned long currLen = 0; 
-    struct itimerval it;
-    max_size_t totLen = 0;
-
     int err;
-
+    struct itimerval it;
+   max_size_t totLen = 0;
     char* readAt = mBuf;
 
     // Indicates if the stream is readable 
@@ -135,17 +281,21 @@ void Client::RunTCP( void ) {
     reportstruct->packetID = 0;
 
     lastPacketTime.setnow();
+
     if ( mMode_Time ) {
 	memset (&it, 0, sizeof (it));
-	it.it_value.tv_sec = (int) (mSettings->mAmount / 100.0);
-	it.it_value.tv_usec = (int) 10000 * (mSettings->mAmount -
-	    it.it_value.tv_sec * 100.0);
-	err = setitimer( ITIMER_REAL, &it, NULL );
+	it.it_value.tv_sec =100* (int) (mSettings->mAmount / 100.0);
+	it.it_value.tv_usec = (int) 10000 * (mSettings->mAmount -it.it_value.tv_sec * 100.0);
+	err = setitimer( ITIMER_REAL, &it, NULL);
+
+
 	if ( err != 0 ) {
 	    perror("setitimer");
 	    exit(1);
-	}
-    }
+		}
+   }
+
+
     do {
         // Read the next data block from 
         // the file if it's file input 
@@ -156,7 +306,7 @@ void Client::RunTCP( void ) {
             canRead = true; 
 
         // perform write 
-        currLen = write( mSettings->mSock, mBuf, mSettings->mBufLen ); 
+       currLen = write( mSettings->mSock, mBuf, mSettings->mBufLen );
         if ( currLen < 0 ) {
             WARN_errno( currLen < 0, "write2" ); 
             break; 
@@ -170,7 +320,7 @@ void Client::RunTCP( void ) {
         }	
 
         if ( !mMode_Time ) {
-            /* mAmount may be unsigned, so don't let it underflow! */
+            // mAmount may be unsigned, so don't let it underflow!
             if( mSettings->mAmount >= currLen ) {
                 mSettings->mAmount -= currLen;
             } else {
@@ -189,11 +339,14 @@ void Client::RunTCP( void ) {
         reportstruct->packetLen = totLen;
         ReportPacket( mSettings->reporthdr, reportstruct );
     }
-    CloseReport( mSettings->reporthdr, reportstruct );
 
+    CloseReport( mSettings->reporthdr, reportstruct );
+    DELETE_ARRAY( mBuf );
     DELETE_PTR( reportstruct );
     EndReport( mSettings->reporthdr );
 }
+
+
 
 /* ------------------------------------------------------------------- 
  * Send data using the connected UDP/TCP socket, 
@@ -208,12 +361,24 @@ void Client::Run( void ) {
     int delay_target = 0; 
     int delay = 0; 
     int adjust = 0; 
-
+    double p;
     char* readAt = mBuf;
 
 #if HAVE_THREAD
     if ( !isUDP( mSettings ) ) {
-	RunTCP();
+
+    if(mSettings->Incast==1)
+    {
+    	printf("###############Incast\n");
+    	Incst_RunTCP();                //*********************zsh
+    }
+    	else
+    {
+    		printf("############No_Incast\n");
+    		 RunTCP();
+    }
+
+
 	return;
     }
 #endif
@@ -262,7 +427,95 @@ void Client::Run( void ) {
 
     lastPacketTime.setnow();
     
-    do {
+    //********************below  zsh  changed********************************************
+    //************************************zsh*************************************************
+    /*
+   	mEndTime.setnow();
+   	p=Possion()/1000.0;
+   mEndTime.add(p);
+   do{
+
+		   printf("possion time :::::%f\n",p);
+		   do {
+
+            // Test case: drop 17 packets and send 2 out-of-order:
+            // sequence 51, 52, 70, 53, 54, 71, 72
+            //switch( datagramID ) {
+            //  case 53: datagramID = 70; break;
+            //  case 71: datagramID = 53; break;
+            //  case 55: datagramID = 71; break;
+            //  default: break;
+            //}
+          gettimeofday( &(reportstruct->packetTime), NULL );
+
+            if ( isUDP( mSettings ) ) {
+                // store datagram ID into buffer
+                mBuf_UDP->id      = htonl( (reportstruct->packetID)++ );
+                mBuf_UDP->tv_sec  = htonl( reportstruct->packetTime.tv_sec );
+                mBuf_UDP->tv_usec = htonl( reportstruct->packetTime.tv_usec );
+
+                // delay between writes
+                // make an adjustment for how long the last loop iteration took
+                // TODO this doesn't work well in certain cases, like 2 parallel streams
+                adjust = delay_target + lastPacketTime.subUsec( reportstruct->packetTime );
+					printf("***********delay time ::%d\n",adjust);
+                lastPacketTime.set( reportstruct->packetTime.tv_sec,
+                                    reportstruct->packetTime.tv_usec );
+
+                if ( adjust > 0  ||  delay > 0 ) {
+                    delay += adjust;
+                }
+            }
+
+            // Read the next data block from
+            // the file if it's file input
+            if ( isFileInput( mSettings ) ) {
+                Extractor_getNextDataBlock( readAt, mSettings );
+                canRead = Extractor_canRead( mSettings ) != 0;
+            } else
+                canRead = true;
+
+            // perform write
+            currLen = write( mSettings->mSock, mBuf, mSettings->mBufLen );
+            if ( currLen < 0 && errno != ENOBUFS ) {
+                WARN_errno( currLen < 0, "write2" );
+                break;
+            }
+
+            // report packets
+            reportstruct->packetLen = currLen;
+            ReportPacket( mSettings->reporthdr, reportstruct );
+
+            if ( delay > 0 ) {
+                delay_loop( delay );
+            }
+            if ( !mMode_Time ) {
+                //mAmount may be unsigned, so don't let it underflow!
+                if( mSettings->mAmount >= currLen ) {
+                    mSettings->mAmount -= currLen;
+                } else {
+                    mSettings->mAmount = 0;
+                }
+            }
+
+
+        } while( !mEndTime.before( reportstruct->packetTime ) );
+
+			sleep(p);
+			mEndTime.setnow();
+       	p=Possion()/1000.0;
+       	mEndTime.add(p );
+
+   }while(!sInterupted);
+
+
+*/
+
+    //**********************above  zsh changed**************************
+
+
+
+   do {
 
         // Test case: drop 17 packets and send 2 out-of-order: 
         // sequence 51, 52, 70, 53, 54, 71, 72 
@@ -284,6 +537,7 @@ void Client::Run( void ) {
             // make an adjustment for how long the last loop iteration took 
             // TODO this doesn't work well in certain cases, like 2 parallel streams 
             adjust = delay_target + lastPacketTime.subUsec( reportstruct->packetTime ); 
+				printf("***************delay ::%d\n",adjust);
             lastPacketTime.set( reportstruct->packetTime.tv_sec, 
                                 reportstruct->packetTime.tv_usec ); 
 
@@ -315,7 +569,7 @@ void Client::Run( void ) {
             delay_loop( delay ); 
         }
         if ( !mMode_Time ) {
-            /* mAmount may be unsigned, so don't let it underflow! */
+            //mAmount may be unsigned, so don't let it underflow!
             if( mSettings->mAmount >= currLen ) {
                 mSettings->mAmount -= currLen;
             } else {
@@ -323,9 +577,10 @@ void Client::Run( void ) {
             }
         }
 
+
     } while ( ! (sInterupted  || 
                  (mMode_Time   &&  mEndTime.before( reportstruct->packetTime ))  || 
-                 (!mMode_Time  &&  0 >= mSettings->mAmount)) && canRead ); 
+                 (!mMode_Time  &&  0 >= mSettings->mAmount)) && canRead );
 
     // stop timing
     gettimeofday( &(reportstruct->packetTime), NULL );

@@ -129,6 +129,7 @@ const struct option long_options[] =
 const struct option env_options[] =
 {
 {"IPERF_SINGLECLIENT",     no_argument, NULL, '1'},
+//{"IPERF_INCAST",                  required_argument,NULL,'a'},
 {"IPERF_BANDWIDTH",  required_argument, NULL, 'b'},
 {"IPERF_CLIENT",     required_argument, NULL, 'c'},
 {"IPERF_DUALTEST",         no_argument, NULL, 'd'},
@@ -169,7 +170,7 @@ const struct option env_options[] =
 
 #define SHORT_OPTIONS()
 
-const char short_options[] = "1b:c:df:hi:l:mn:o:p:rst:uvw:x:y:B:CDF:IL:M:NP:RS:T:UVWZ:";
+const char short_options[] = "a:1b:c:df:hi:l:mn:o:p:rst:uvw:x:y:E:B:CDF:IL:M:NP:RS:T:UVWZ:";
 
 /* -------------------------------------------------------------------
  * defaults
@@ -202,7 +203,7 @@ void Settings_Initialize( thread_Settings *main ) {
     main->mFormat       = 'a';           // -f,  adaptive bits
     // skip help                         // -h,
     //main->mBufLenSet  = false;         // -l,	
-    main->mBufLen       = 128 * 1024;      // -l,  8 Kbyte
+    main->mBufLen       =  128 * 1024;      // -l,  8 Kbyte
     //main->mInterval     = 0;           // -i,  ie. no periodic bw reports
     //main->mPrintMSS   = false;         // -m,  don't print MSS
     // mAmount is time also              // -n,  N/A
@@ -229,6 +230,7 @@ void Settings_Initialize( thread_Settings *main ) {
     //main->mRemoveService = false;      // -R,
     //main->mTOS          = 0;           // -S,  ie. don't set type of service
     main->mTTL          = 1;             // -T,  link-local TTL
+    main->Incast=0				;               // -I   Incast mode
     //main->mDomain     = kMode_IPv4;    // -V,
     //main->mSuggestWin = false;         // -W,  Suggest the window size.
 
@@ -316,6 +318,11 @@ void Settings_Interpret( char option, const char *optarg, thread_Settings *mExtS
         case '1': // Single Client
             setSingleClient( mExtSettings );
             break;
+
+        case 'a':
+				mExtSettings->Incast = atoi( optarg );
+				break;
+
         case 'b': // UDP bandwidth
             if ( !isUDP( mExtSettings ) ) {
                 fprintf( stderr, warn_implied_udp, option );
@@ -346,9 +353,11 @@ void Settings_Interpret( char option, const char *optarg, thread_Settings *mExtS
                 iperf_sockaddr temp;
                 SockAddr_setHostname( mExtSettings->mHost, &temp,
                                       (isIPV6( mExtSettings ) ? 1 : 0 ));
+
                 if ( SockAddr_isMulticast( &temp ) ) {
                     setMulticast( mExtSettings );
                 }
+
                 mExtSettings->mThreadMode = kMode_Client;
                 mExtSettings->mThreads = 1;
             }
@@ -563,6 +572,15 @@ void Settings_Interpret( char option, const char *optarg, thread_Settings *mExtS
         case 'D': // Run as a daemon
             setDaemon( mExtSettings );
             break;
+
+        case 'E':
+        	// setFileInput( mExtSettings );
+        	 mExtSettings->Ip_FileName = new char[strlen(optarg)+1];
+        	 strcpy( mExtSettings->Ip_FileName, optarg);
+
+        	 mExtSettings->mThreadMode = kMode_Client;
+
+        	break;
 
         case 'F' : // Get the input for the data stream from a file
             if ( mExtSettings->mThreadMode != kMode_Client ) {

@@ -95,7 +95,17 @@ void server_spawn( thread_Settings *thread) {
     theServer = new Server( thread );
     
     // Run the test
+    //theServer->Run();
+    if(thread->Incast==1)
+    {
+    	printf("###########Incast\n");
+    theServer->Incst_Run();   //**************zshzsh
+    }
+    else
+    {
+    	printf("##############No_incast\n");
     theServer->Run();
+    }
     DELETE_PTR( theServer);
 }
 
@@ -154,12 +164,31 @@ void client_init( thread_Settings *clients ) {
     // For each of the needed threads create a copy of the
     // provided settings, unsetting the report flag and add
     // to the list of threads to start
+
+    if( (clients->Ip_Add=fopen(clients->Ip_FileName,"rb"))!=NULL )
+         {
+				itr->mHost=new char[20];
+    	      fgets(itr->mHost,20,clients->Ip_Add);
+
+    	      for (int i = 1; i < clients->mThreads; i++) {
+    	             Settings_Copy( clients, &next );
+    	             unsetReport( next );
+    	             itr->runNow = next;
+    	             itr = next;
+    	             fgets(itr->mHost,20,clients->Ip_Add);
+    	         }
+          }
+
+        else
+
     for (int i = 1; i < clients->mThreads; i++) {
         Settings_Copy( clients, &next );
         unsetReport( next );
         itr->runNow = next;
         itr = next;
+        fgets(itr->mHost,20,clients->Ip_Add);
     }
+
 #ifndef HAVE_THREAD
     if ( next != NULL ) {
         // We don't have threads and we need to start a listener so

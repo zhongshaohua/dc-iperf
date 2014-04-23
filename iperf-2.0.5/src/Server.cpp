@@ -61,7 +61,7 @@
 #include "Extractor.h"
 #include "Reporter.h"
 #include "Locale.h"
-
+#include "PerfSocket.hpp"    //*****zsh
 /* -------------------------------------------------------------------
  * Stores connected socket and socket info.
  * ------------------------------------------------------------------- */
@@ -91,22 +91,159 @@ Server::~Server() {
 void Server::Sig_Int( int inSigno ) {
 }
 
+
 /* ------------------------------------------------------------------- 
  * Receive data from the (connected) socket.
  * Sends termination flag several times at the end. 
  * Does not close the socket. 
  * ------------------------------------------------------------------- */ 
+
+
+void Server::Incst_Run(void){
+
+			unsigned long nleft,leftLen,totLen,nread;
+	      totLen=0;
+	       char *ptr=NULL;
+	       char *vptr=NULL;
+	       unsigned long currLen;
+
+	       ReportStruct *reportstruct = NULL;
+	       reportstruct = new ReportStruct;
+
+	           if ( reportstruct != NULL ) {
+	               reportstruct->packetID = 0;
+	               mSettings->reporthdr = InitReport( mSettings );
+	           }
+
+
+	do{
+	    	nleft=1;
+	    	currLen=0;
+	    	ptr=new char[20];
+	    	vptr=ptr;
+
+	       while(nleft>0)
+	        {
+	        	nread=recv(mSettings->mSock,vptr,nleft,0);
+	        	if (nread<0){
+	        		 WARN_errno( nread< 0, "read2" );
+	        		  break;
+	        	}
+
+	        	if(nread==0)
+	        	{
+	        		//printf("exit\n");
+	        		goto timeout;
+
+	        	}
+	        	nleft-=nread;
+	        	vptr+=nread;
+	        }
+
+	        nleft=(*ptr-'0');
+
+	      //  printf("%d\n",nleft);
+
+			memset(ptr,' ',20);
+
+			vptr=ptr;
+
+	        while(nleft>0)
+	        {
+	        	nread=recv(mSettings->mSock,ptr,nleft,0);
+	        	if(nread<0)
+	        	{
+	        		WARN_errno(nread<0,"read 2");
+	        		break;
+	        	}
+	        	nleft-=nread;
+	        	vptr+=nread;
+	        }
+	       *vptr='\0';
+	    	//fprintf(stderr,"\n$$$$$$$$$$$$$$$$$$$$$%s\n",ptr);
+
+	    	if( strcmp("request",ptr)==0 )
+	    	{
+
+	    		  //int err;
+	    		 // struct itimerval it;
+	    		// ReportStruct *reportstruct = NULL;
+
+	    	/*	 reportstruct = new ReportStruct;
+	    		 reportstruct->packetID = 0;
+	    		 mSettings->reporthdr = InitReport( mSettings );
+	    	*/
+
+	    		 //  lastPacketTime.setnow();
+
+	    		leftLen=mSettings->mBufLen;
+	    		 do{
+	    			currLen = write( mSettings->mSock, mBuf, leftLen );
+	    			if(currLen<0)
+	    				break;
+	    			leftLen-=currLen;
+	    			totLen+=currLen;
+
+	    			reportstruct->packetLen=currLen;
+	    			gettimeofday(&(reportstruct->packetTime),NULL);
+	    			ReportPacket(mSettings->reporthdr,reportstruct);
+
+	    		 }while(leftLen>0);
+
+
+	    	/*	printf("while end2!!!!!!!!!!\n");
+	    		gettimeofday( &(reportstruct->packetTime), NULL );
+	    		printf("sec::%d\nusec:::%d\n",reportstruct->packetTime.tv_sec,reportstruct->packetTime.tv_usec);
+				printf("length::::%d\n",totLen);
+
+	    		ReportPacket( mSettings->reporthdr, reportstruct );
+	    		CloseReport( mSettings->reporthdr, reportstruct );
+
+	    		Mutex_Lock( &clients_mutex );
+	    		Iperf_delete( &(mSettings->peer), &clients );
+	    		Mutex_Unlock( &clients_mutex );
+
+	    		DELETE_PTR( reportstruct );
+	    		EndReport( mSettings->reporthdr );*/
+
+	    	}
+
+	    	delete []ptr;
+
+	      }while(1);
+
+					timeout:
+					printf("time out!!!!1\n");
+
+					//printf("sedlen:::%d\n",totLen);
+
+					ReportPacket( mSettings->reporthdr, reportstruct );
+		    		CloseReport( mSettings->reporthdr, reportstruct );
+
+		    		Mutex_Lock( &clients_mutex );
+		    		Iperf_delete( &(mSettings->peer), &clients );
+		    		Mutex_Unlock( &clients_mutex );
+
+		    		DELETE_PTR( reportstruct );
+		    		EndReport( mSettings->reporthdr );
+
+}
+
+
+
 void Server::Run( void ) {
     long currLen; 
     max_size_t totLen = 0;
     struct UDP_datagram* mBuf_UDP  = (struct UDP_datagram*) mBuf; 
-
+    char* readAt = mBuf;
+    bool canRead = true, mMode_Time = isModeTime( mSettings );
     ReportStruct *reportstruct = NULL;
-
     reportstruct = new ReportStruct;
+
     if ( reportstruct != NULL ) {
         reportstruct->packetID = 0;
         mSettings->reporthdr = InitReport( mSettings );
+
         do {
             // perform read 
             currLen = recv( mSettings->mSock, mBuf, mSettings->mBufLen, 0 ); 
@@ -137,9 +274,7 @@ void Server::Run( void ) {
                 ReportPacket( mSettings->reporthdr, reportstruct );
             }
 
-
-
-        } while ( currLen > 0 ); 
+        } while ( currLen > 0 );
         
         
         // stop timing 
@@ -149,8 +284,9 @@ void Server::Run( void ) {
 		if(0.0 == mSettings->mInterval) {
                         reportstruct->packetLen = totLen;
                 }
-		ReportPacket( mSettings->reporthdr, reportstruct );
+					ReportPacket( mSettings->reporthdr, reportstruct );
 	}
+
         CloseReport( mSettings->reporthdr, reportstruct );
         
         // send a acknowledgement back only if we're NOT receiving multicast 
@@ -168,7 +304,7 @@ void Server::Run( void ) {
 
     DELETE_PTR( reportstruct );
     EndReport( mSettings->reporthdr );
-} 
+ }
 // end Recv 
 
 /* ------------------------------------------------------------------- 

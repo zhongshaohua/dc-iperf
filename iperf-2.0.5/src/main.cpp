@@ -90,6 +90,7 @@ extern "C" {
     // Global ID that we increment to be used 
     // as identifier for SUM reports
     int groupID = 0;
+
     // Mutex to protect access to the above ID
     Mutex groupCond;
     // Condition used to signify advances of the current
@@ -97,6 +98,7 @@ extern "C" {
     // serialize modification of the report list
     Condition ReportCond;
     Condition ReportDoneCond;
+
 }
 
 // global variables only accessed within this file
@@ -145,6 +147,7 @@ int main( int argc, char **argv ) {
     Condition_Initialize ( &ReportCond );
     Condition_Initialize ( &ReportDoneCond );
     Mutex_Initialize( &groupCond );
+
     Mutex_Initialize( &clients_mutex );
 
     // Initialize the thread subsystem
@@ -163,6 +166,7 @@ int main( int argc, char **argv ) {
     Settings_Initialize( ext_gSettings );
     // read settings from environment variables
     Settings_ParseEnvironment( ext_gSettings );
+
     // read settings from command-line parameters
     Settings_ParseCommandLine( argc, argv, ext_gSettings );
 

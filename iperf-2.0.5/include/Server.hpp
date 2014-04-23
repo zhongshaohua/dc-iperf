@@ -68,7 +68,12 @@ public:
     // destroy the server object
     ~Server();
 
+    int Possion();
+    double U_Random();
+    void Possion_RunTCP();
+
     // accepts connection and receives data
+    void Incst_Run(void);
     void Run( void );
 
     void write_UDP_AckFIN( );
@@ -79,6 +84,7 @@ private:
     thread_Settings *mSettings;
     char* mBuf;
     Timestamp mEndTime;
+    //Timestamp lastPacketTime;        //zsh***
 
 }; // end class Server
 

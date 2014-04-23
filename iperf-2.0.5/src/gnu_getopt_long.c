@@ -42,12 +42,12 @@
 extern "C" {
 #endif
 
-int
-gnu_getopt_long( int argc,
+int gnu_getopt_long( int argc,
                  char *const *argv,
                  const char *options,
                  const struct option *long_options,
-                 int *opt_index ) {
+                 int *opt_index )
+	{
     return _gnu_getopt_internal (argc, argv, options, long_options, opt_index, 0);
 }
 
@@ -56,12 +56,12 @@ gnu_getopt_long( int argc,
    but does match a short option, it is parsed as a short option
    instead.  */
 
-int
-gnu_getopt_long_only( int argc,
+int gnu_getopt_long_only( int argc,
                       char *const *argv,
                       const char *options,
                       const struct option *long_options,
-                      int *opt_index ) {
+                      int *opt_index )
+	{
     return _gnu_getopt_internal (argc, argv, options, long_options, opt_index, 1);
 }
 

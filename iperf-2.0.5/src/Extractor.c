@@ -81,6 +81,7 @@ void Extractor_Initialize ( char *fileName, int inSize, thread_Settings *mSettin
 }
 
 
+
 /**
  * Constructor
  * @arg fp         File Pointer 

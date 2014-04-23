@@ -68,7 +68,7 @@ void delay_loop(unsigned long usec)
 
     while (nanosleep(&requested, &remaining) == -1)
         if (errno == EINTR)
-            requested = remaining;
+            requested = remaining;					//****************zsh******  被信号中断后     继续
         else {
             WARN_errno(1, "nanosleep");
             break;

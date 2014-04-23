@@ -296,6 +296,8 @@ ReportHeader* InitReport( thread_Settings *agent ) {
             } else {
                 // set start time
                 gettimeofday( &(reporthdr->report.startTime), NULL );
+              //  printf("startTime::%d\n",reporthdr->report.startTime.tv_sec);// ******************zsh
+               // printf("startTime::%d\n",reporthdr->report.startTime.tv_usec);//*****************zsh
             }
             reporthdr->report.nextTime = reporthdr->report.startTime;
             TimeAdd( reporthdr->report.nextTime, reporthdr->report.intervalTime );
@@ -608,6 +610,7 @@ int reporter_process_report ( ReportHeader *reporthdr ) {
 
     // Recursively process reports
     if ( reporthdr->next != NULL ) {
+
         if ( reporter_process_report( reporthdr->next ) ) {
             // If we are done with this report then free it
             ReportHeader *temp = reporthdr->next;
@@ -653,7 +656,7 @@ int reporter_process_report ( ReportHeader *reporthdr ) {
                     reporthdr->reporterindex = -1;
                     break;
                 }
-            }
+            }		//end while()
         }
         // If the agent is done with the report then free it
         if ( reporthdr->agentindex == -1 ) {

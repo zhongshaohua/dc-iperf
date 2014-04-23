@@ -275,7 +275,9 @@ void Listener::Run( void ) {
             Settings_Copy( mSettings, &server );
             server->mThreadMode = kMode_Server;
         } while ( !sInterupted && (!mCount || ( mCount && mClients > 0 )) );
-    
+
+       // printf("sInterupted %d mCount %d mClients %d\n",sInterupted,mCount,mClients);
+
         Settings_Destroy( server );
     }
 } // end Run 
@@ -453,7 +455,7 @@ void Listener::Accept( thread_Settings *server ) {
             // accept a connection
             server->mSock = accept( mSettings->mSock, 
                                     (sockaddr*) &server->peer, &server->size_peer );
-            if ( server->mSock == INVALID_SOCKET &&  errno == EINTR ) {
+            if ( server->mSock == INVALID_SOCKET &&  errno == EINTR ) {				//*******zsh  被中断 应该继续等待
                 continue;
             }
         }

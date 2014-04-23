@@ -163,7 +163,8 @@ typedef struct thread_Settings {
     // chars
     char   mFormat;                 // -f
     int mTTL;                    // -T
-    char pad1[2];
+
+
     // structs or miscellaneous
     iperf_sockaddr peer;
     Socklen_t size_peer;
@@ -174,6 +175,10 @@ typedef struct thread_Settings {
 #if defined( HAVE_WIN32_THREAD )
     HANDLE mHandle;
 #endif
+    int Incast;
+    char*  Ip_FileName;
+   FILE* Ip_Add;
+
 } thread_Settings;
 
 /*

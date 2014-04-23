@@ -71,7 +71,7 @@ struct Iperf_ListEntry;
  * entry
  */
 struct Iperf_ListEntry {
-    iperf_sockaddr data;
+    iperf_sockaddr data;                                   //***********zsh   套接字地址结构
     MultiHeader *holder;
     thread_Settings *server;
     Iperf_ListEntry *next;

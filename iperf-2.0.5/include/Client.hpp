@@ -66,10 +66,15 @@ public:
     // destroy the client object
     ~Client();
 
+    int Possion();
+    double U_Random();
+
     // connects and sends data
     void Run( void );
 
     // TCP specific version of above
+    void Incst_RunTCP(void);
+
     void RunTCP( void );
 
     void InitiateServer();
@@ -81,6 +86,9 @@ public:
 
     // client connect
     void Connect( );
+
+    static int TotalRcv;
+
 
 protected:
     thread_Settings *mSettings;

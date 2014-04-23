@@ -339,13 +339,13 @@ _gnu_getopt_initialize( int argc,
    If LONG_ONLY is nonzero, '-' as well as '--' can introduce
    long-named options.  */
 
-int
-_gnu_getopt_internal( int argc,
+int _gnu_getopt_internal( int argc,
                       char *const *argv,
                       const char *optstring,
                       const struct option *longopts,
                       int *longind,
-                      int long_only ) {
+                      int long_only )
+	{
     gnu_optarg = NULL;
 
     if ( !__gnu_getopt_initialized || gnu_optind == 0 ) {
@@ -747,7 +747,7 @@ gnu_getopt ( int argc,
 } /* end extern "C" */
 #endif
 
-
+
 #ifdef TEST
 
 /* Compile with -DTEST to make an executable for use in testing
